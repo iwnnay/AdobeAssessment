@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-03-31T01:48:53.905944Z",
+  "region": "US",
+  "audience": "Busy young professionals",
+  "products": {
+    "Coffee Pods": [
+      {
+        "ratio": "1:1",
+        "path": "outputs\\coffee_pods\\1x1\\coffee_pods_1x1.png",
+        "brand_logo_present": false,
+        "brand_colors_used": true,
+        "legal_issues": []
+      },
+      {
+        "ratio": "9:16",
+        "path": "outputs\\coffee_pods\\9x16\\coffee_pods_9x16.png",
+        "brand_logo_present": false,
+        "brand_colors_used": true,
+        "legal_issues": []
+      },
+      {
+        "ratio": "16:9",
+        "path": "outputs\\coffee_pods\\16x9\\coffee_pods_16x9.png",
+        "brand_logo_present": false,
+        "brand_colors_used": true,
+        "legal_issues": []
+      }
+    ],
+    "Cold Brew Bottle": [
+      {
+        "ratio": "1:1",
+        "path": "outputs\\cold_brew_bottle\\1x1\\cold_brew_bottle_1x1.png",
+        "brand_logo_present": false,
+        "brand_colors_used": true,
+        "legal_issues": []
+      },
+      {
+        "ratio": "9:16",
+        "path": "outputs\\cold_brew_bottle\\9x16\\cold_brew_bottle_9x16.png",
+        "brand_logo_present": false,
+        "brand_colors_used": true,
+        "legal_issues": []
+      },
+      {
+        "ratio": "16:9",
+        "path": "outputs\\cold_brew_bottle\\16x9\\cold_brew_bottle_16x9.png",
+        "brand_logo_present": false,
+        "brand_colors_used": true,
+        "legal_issues": []
+      }
+    ]
+  },
+  "ratios": [
+    "1:1",
+    "9:16",
+    "16:9"
+  ],
+  "notes": [],
+  "legal_issues": []
+}
