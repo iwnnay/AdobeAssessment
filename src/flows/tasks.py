@@ -3,7 +3,7 @@ CrewAI Task Definitions for Campaign Generation Flow
 """
 from crewai import Task
 from typing import List
-from models import Campaign
+from src.models import Campaign
 
 
 def create_branding_extraction_task(agent, campaign: Campaign, image_paths: List[str]) -> Task:

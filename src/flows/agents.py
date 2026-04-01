@@ -4,7 +4,7 @@ CrewAI Agent Definitions for Campaign Generation
 import os
 
 from crewai import Agent, LLM
-from tools import (
+from src.flows.tools import (
     BrandingExtractionTool,
     LogoExtractionTool,
     MarketingExtractionTool,

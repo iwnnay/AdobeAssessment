@@ -8,8 +8,9 @@ from crewai import Crew, Process, LLM
 from google.genai import types
 from PIL import Image as PILImage
 
-from models import Campaign, ImageRecord
-from src.agents import (
+from src.database import Database
+from src.models import Campaign, ImageRecord
+from src.flows.agents import (
     create_branding_extract_agent,
     create_logo_extract_agent,
     create_marketing_extract_agent,
@@ -17,7 +18,7 @@ from src.agents import (
     create_branding_report_agent,
     create_future_campaigns_agent
 )
-from tasks import (
+from src.flows.tasks import (
     create_branding_extraction_task,
     create_logo_extraction_task,
     create_marketing_extraction_task,
@@ -25,7 +26,7 @@ from tasks import (
     create_branding_report_task,
     create_future_campaigns_task
 )
-from utils import ensure_dir, required_ratios
+from src.utils import ensure_dir, required_ratios
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,8 +40,9 @@ class CampaignGenerationFlow:
     def __init__(self, storage_root: str = "storage", outputs_root: str = "images"):
         self.storage_root = storage_root
         self.outputs_root = outputs_root
+        self.db = None
 
-    def execute(self, campaign: Campaign) -> Campaign:
+    def execute(self, campaign: Campaign, db: Database) -> Campaign:
         """
         Execute the full 4-step campaign generation flow.
 
@@ -49,6 +51,8 @@ class CampaignGenerationFlow:
         Step 3: Evaluate branding and generate future campaigns
         Step 4: Return completed campaign
         """
+
+        self.db = db
         print(f"\n=== Starting Campaign Generation Flow for: {campaign.name} ===\n")
 
         # Get paths for initial images
@@ -107,7 +111,7 @@ class CampaignGenerationFlow:
         extraction_crew = Crew(
             agents=[branding_agent, marketing_agent, logo_agent] if logo_task else [branding_agent, marketing_agent],
             tasks=extraction_tasks,
-            process=Process.parallel,
+            process=Process.sequential,
             verbose=True,
             llm=llm,
         )
@@ -127,7 +131,10 @@ class CampaignGenerationFlow:
             else:
                 campaign.language = "EN"
 
+        self.db.update(campaign)
+
         campaign.marketingDetails = marketing_result
+        self.db.update(campaign)
 
         # Set logo if extracted
         if logo_task and os.path.exists(logo_output_path):
@@ -135,6 +142,7 @@ class CampaignGenerationFlow:
                 aspectRatio="square",
                 path=os.path.relpath(logo_output_path)
             )
+        self.db.update(campaign)
 
         return campaign
 
@@ -239,7 +247,7 @@ Requirements:
                 size = (1920, 1080)
 
             # Create placeholder image (in production, replace with actual Imagen API call)
-            from utils import generate_placeholder
+            from src.utils import generate_placeholder
             return generate_placeholder(*size, text=campaign_message[:80])
 
         except Exception as e:
@@ -251,7 +259,7 @@ Requirements:
                 size = (1080, 1920)
             else:
                 size = (1920, 1080)
-            from utils import generate_placeholder
+            from src.utils import generate_placeholder
             return generate_placeholder(*size, text=campaign_message[:80])
 
     def _step3_evaluation(self, campaign: Campaign) -> Campaign:
@@ -291,7 +299,7 @@ Requirements:
         evaluation_crew = Crew(
             agents=[branding_report_agent, future_campaigns_agent],
             tasks=[branding_report_task, future_campaigns_task],
-            process=Process.parallel,
+            process=Process.sequential,
             verbose=True,
             llm=llm,
         )

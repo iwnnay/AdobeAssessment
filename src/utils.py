@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from PIL import Image as PILImage, ImageDraw, ImageFont
 
-from models import ImageRecord
+from src.models import ImageRecord
 
 
 RATIO_BUCKETS = {
@@ -42,7 +42,7 @@ def ensure_dir(path: str):
 
 def save_uploaded_images(campaign_id: int, images: List[io.BytesIO]) -> List[ImageRecord]:
     saved: List[ImageRecord] = []
-    base_dir = os.path.join("storage", f"campaign_{campaign_id}")
+    base_dir = os.path.join("./storage", f"campaign_{campaign_id}")
     ensure_dir(base_dir)
     for idx, file in enumerate(images):
         img = PILImage.open(file).convert("RGBA")

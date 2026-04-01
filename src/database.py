@@ -2,11 +2,10 @@ import json
 import os
 from typing import List, Dict, Optional
 
-from models import Campaign
+from src.models import Campaign
 
 
 DB_PATH = os.path.join(os.getcwd(), "database.json")
-
 
 class Database:
     def __init__(self, path: str = DB_PATH):

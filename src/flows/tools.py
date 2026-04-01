@@ -57,7 +57,7 @@ Format your response as a structured branding guide suitable for image generatio
                     contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
 
             response = client.models.generate_content(
-                model='gemini-1.5-pro',
+                model=os.getenv("GEMINI_MODEL_NAME"),
                 contents=contents
             )
 
@@ -88,15 +88,13 @@ Provide the exact coordinates (x, y, width, height) of the logo in the image as 
 If multiple logos are present, identify the primary brand logo.
 Format: x_percent, y_percent, width_percent, height_percent"""
 
-            # Load image as bytes
-            with open(image_path, 'rb') as f:
-                image_bytes = f.read()
+            image = Image.open(image_path)
 
             response = client.models.generate_content(
-                model='gemini-1.5-pro',
+                model=os.getenv("GEMINI_MODEL_NAME"),
                 contents=[
-                    prompt,
                     types.Part.from_bytes(data=image_bytes, mime_type='image/png')
+                    prompt,
                 ]
             )
 
@@ -142,7 +140,7 @@ Provide:
 Focus on creating compelling, culturally-appropriate content that drives engagement."""
 
             response = client.models.generate_content(
-                model='gemini-1.5-pro',
+                model=os.getenv("GEMINI_MODEL_NAME"),
                 contents=prompt
             )
             return response.text
@@ -187,7 +185,7 @@ Create a comprehensive image generation prompt that:
 Provide a structured prompt suitable for AI image generation."""
 
             response = client.models.generate_content(
-                model='gemini-1.5-pro',
+                model=os.getenv("GEMINI_MODEL_NAME"),
                 contents=prompt
             )
             return response.text
@@ -236,7 +234,7 @@ Provide a comprehensive branding report."""
                 contents[0] += "\n\nNote: No images were provided for evaluation."
 
             response = client.models.generate_content(
-                model='gemini-1.5-pro',
+                model=os.getenv("GEMINI_MODEL_NAME"),
                 contents=contents
             )
 
@@ -284,7 +282,7 @@ For each of the next 3 months, provide:
 Focus on long-term strategy and sustained audience engagement."""
 
             response = client.models.generate_content(
-                model='gemini-1.5-pro',
+                model=os.getenv("GEMINI_MODEL_NAME"),
                 contents=prompt
             )
             return response.text

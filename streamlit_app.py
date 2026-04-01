@@ -13,10 +13,10 @@ if sys.version_info < (3, 12):
 
 import streamlit as st
 
-from models import Campaign
-from database import Database
-from utils import slugify, save_uploaded_images
-from generator import ImageGenerator
+from src.models import Campaign
+from src.database import Database
+from src.utils import slugify, save_uploaded_images
+from src.generator import ImageGenerator
 
 
 # ---------------------- Frontend (Streamlit) ----------------------
@@ -113,7 +113,8 @@ def run_generation_flow(campaign: Campaign, uploaded_images: List[io.BytesIO]) -
     saved = save_uploaded_images(campaign.id, uploaded_images)
     campaign.initialImages = saved
     # Execute the complete CrewAI flow (all steps: extraction, generation, evaluation)
-    campaign = generator.process_campaign(campaign)
+    db.update(campaign)
+    campaign = generator.process_campaign(campaign, db)
     db.update(campaign)
     return campaign
 
@@ -137,13 +138,15 @@ def sidebar_nav() -> Optional[int]:
             st.session_state["page"] = f"view:{cid}"
         except Exception:
             pass
+    if st.sidebar.button("Plot Chart"):
+        st.session_state["page"] = "plot"
     return None
 
 
 def page_new_campaign():
     new_id = db.next_id()
     st.markdown("## Generate Campaign")
-    st.text_input("Campaign Name", value=f"Campaign {new_id}")
+    name = st.text_input("Campaign Name", value=f"Campaign {new_id}")
 
     # Toggle between file upload and manual form
     use_upload = st.checkbox("Upload brief (JSON)?", value=True)
@@ -225,6 +228,9 @@ def page_view_campaign(cid: int):
         return
     show_campaign(campaign)
 
+def show_plot_page():
+    pass
+
 
 def main():
     sidebar_nav()
@@ -237,9 +243,13 @@ def main():
             page_view_campaign(cid)
         except Exception:
             page_new_campaign()
+    elif page == "plot":
+        try:
+            show_plot_page()
+        except Exception:
+            page_new_campaign()
     else:
         page_new_campaign()
-
 
 if __name__ == "__main__":
     main()
