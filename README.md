@@ -18,7 +18,7 @@ Key Features
   - JSON report summarizing generated assets and checks.
 
 Requirements
-- Python 3.8+
+- Python 3.12+
 - Dependencies listed in requirements.txt
 
 Install
