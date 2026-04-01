@@ -21,6 +21,24 @@ Requirements
 - Python 3.12+
 - Dependencies listed in requirements.txt
 
+Run with Docker (recommended)
+These images and compose files target Docker Desktop and use Python 3.12.13.
+
+Quick start with docker-compose:
+- Build and start:
+  docker compose up --build
+- Then open your browser at:
+  http://localhost:8501
+
+What gets persisted on your host:
+- database.json — the flat DB
+- images/ — generated creatives (images/campaign{ID}/1x1.png, 9x16.png, 16x9.png)
+- storage/ — uploaded inputs and stubbed logo extraction outputs
+
+To stop the app:
+- Press Ctrl+C in the terminal, then:
+  docker compose down
+
 Install
 1. (Optional) Create and activate a virtual environment.
 2. Install dependencies:
