@@ -40,9 +40,8 @@ class CampaignGenerationFlow:
     def __init__(self, storage_root: str = "storage", outputs_root: str = "images"):
         self.storage_root = storage_root
         self.outputs_root = outputs_root
-        self.db = None
 
-    def execute(self, campaign: Campaign, db: Database) -> Campaign:
+    def execute(self, campaign: Campaign) -> Campaign:
         """
         Execute the full 4-step campaign generation flow.
 
@@ -51,8 +50,6 @@ class CampaignGenerationFlow:
         Step 3: Evaluate branding and generate future campaigns
         Step 4: Return completed campaign
         """
-
-        self.db = db
         print(f"\n=== Starting Campaign Generation Flow for: {campaign.name} ===\n")
 
         # Get paths for initial images
@@ -131,10 +128,7 @@ class CampaignGenerationFlow:
             else:
                 campaign.language = "EN"
 
-        self.db.update(campaign)
-
         campaign.marketingDetails = marketing_result
-        self.db.update(campaign)
 
         # Set logo if extracted
         if logo_task and os.path.exists(logo_output_path):
@@ -142,7 +136,6 @@ class CampaignGenerationFlow:
                 aspectRatio="square",
                 path=os.path.relpath(logo_output_path)
             )
-        self.db.update(campaign)
 
         return campaign
 

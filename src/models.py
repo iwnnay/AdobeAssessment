@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, validator
 class ImageRecord(BaseModel):
     aspectRatio: str
     path: str
+    brandingReport: str = ""
 
 
 class Campaign(BaseModel):
@@ -17,13 +18,10 @@ class Campaign(BaseModel):
     campaign_message: str
     language: str = "US_en"
     approved: bool = False
-    initialImages: List[ImageRecord] = Field(default_factory=list)
     generatedImages: List[ImageRecord] = Field(default_factory=list)
     brandingDetails: str = ""
-    brandingReport: str = ""
     marketingDetails: str = ""
     futureCampaigns: str = ""
-    logoImage: Optional[ImageRecord] = None
 
     @validator("products")
     def products_must_have_two(cls, v):

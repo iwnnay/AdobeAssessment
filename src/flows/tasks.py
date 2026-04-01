@@ -6,33 +6,19 @@ from typing import List
 from src.models import Campaign
 
 
-def create_branding_extraction_task(agent, campaign: Campaign, image_paths: List[str]) -> Task:
-    """Task for extracting branding details from images and campaign brief."""
+def create_branding_extraction_task(agent, campaign: Campaign, logo_path: str) -> Task:
+    """Task for extracting branding details from logo and campaign brief."""
     return Task(
-        description=f"""Analyze the provided images and campaign details to extract comprehensive branding guidelines.
+        description=f"""Analyze the provided logo and campaign details to extract comprehensive branding guidelines.
 
 Campaign Details:
 - Products: {', '.join(campaign.products)}
 - Target Audience: {campaign.target_audience}
 - Campaign Message: {campaign.campaign_message}
-- Images to analyze: {', '.join(image_paths)}
+- Logo path: {logo_path}
 
 Extract detailed branding information including logo characteristics, color palette, typography, visual tone, and brand elements to include or avoid in generated images.""",
         expected_output="A structured branding guide with logo details, color palette, typography, visual tone, and specific guidelines for image generation.",
-        agent=agent
-    )
-
-
-def create_logo_extraction_task(agent, image_path: str, output_path: str) -> Task:
-    """Task for extracting logo from uploaded image."""
-    return Task(
-        description=f"""Extract the primary logo from the provided image and save it for later use in image generation.
-
-Input Image: {image_path}
-Output Path: {output_path}
-
-Identify and isolate the logo, then save it as a separate image file that can be used in the image generation process.""",
-        expected_output=f"Logo extracted and saved to {output_path} with confirmation of successful extraction.",
         agent=agent
     )
 
@@ -76,25 +62,27 @@ Synthesize all information into a comprehensive prompt that will guide AI image 
     )
 
 
-def create_branding_report_task(agent, generated_image_paths: List[str],
+def create_branding_report_task(agent, generated_image_path: str, logo_path: str,
                                  branding_details: str) -> Task:
-    """Task for evaluating generated images against branding guidelines."""
+    """Task for evaluating a single generated image against branding guidelines."""
     return Task(
-        description=f"""Evaluate the generated campaign images against the established branding guidelines.
+        description=f"""Evaluate the generated campaign image against the established branding guidelines and verify logo inclusion.
 
-Generated Images: {', '.join(generated_image_paths)}
+Generated Image: {generated_image_path}
+Logo Reference: {logo_path}
 
 Branding Guidelines:
 {branding_details[:500]}...
 
-For each image, provide:
+Provide:
 1. Branding alignment score (0-10)
-2. Strengths and positive elements
-3. Areas for improvement
-4. Specific recommendations
+2. Logo detection - Is the input logo actually included in the generated image? (Yes/No and details)
+3. Strengths and positive elements
+4. Areas for improvement
+5. Specific recommendations
 
-Create a comprehensive branding evaluation report.""",
-        expected_output="A detailed branding report with scores, analysis of what's working, areas for improvement, and actionable recommendations for each generated image.",
+IMPORTANT: Verify whether the logo from {logo_path} appears in the generated image.""",
+        expected_output="A detailed branding report with score, logo detection confirmation, analysis of what's working, areas for improvement, and actionable recommendations.",
         agent=agent
     )
 

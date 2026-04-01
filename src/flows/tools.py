@@ -66,50 +66,6 @@ Format your response as a structured branding guide suitable for image generatio
             return f"Error extracting branding details: {str(e)}"
 
 
-class LogoExtractionInput(BaseModel):
-    """Input schema for LogoExtractionTool."""
-    image_path: str = Field(..., description="Path to image containing the logo")
-    output_path: str = Field(..., description="Path where extracted logo should be saved")
-
-
-class LogoExtractionTool(BaseTool):
-    name: str = "Logo Extraction Tool"
-    description: str = "Extracts and isolates the logo from an image using Gemini Pro Vision"
-    args_schema: Type[BaseModel] = LogoExtractionInput
-
-    def _run(self, image_path: str, output_path: str) -> str:
-        """Extract logo from image and save it."""
-        try:
-            if not os.path.exists(image_path):
-                return f"Error: Image not found at {image_path}"
-
-            prompt = """Analyze this image and identify the logo location and boundaries.
-Provide the exact coordinates (x, y, width, height) of the logo in the image as percentages of the image dimensions.
-If multiple logos are present, identify the primary brand logo.
-Format: x_percent, y_percent, width_percent, height_percent"""
-
-            image = Image.open(image_path)
-
-            response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL_NAME"),
-                contents=[
-                    types.Part.from_bytes(data=image_bytes, mime_type='image/png')
-                    prompt,
-                ]
-            )
-
-            # Parse coordinates and crop logo
-            # Note: In production, you'd parse the response and crop accordingly
-            # For now, we'll save the full image with a note
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            image = PILImage.open(image_path)
-            image.save(output_path)
-
-            return f"Logo extracted and saved to {output_path}. Analysis: {response.text[:200]}"
-        except Exception as e:
-            return f"Error extracting logo: {str(e)}"
-
-
 class MarketingExtractionInput(BaseModel):
     """Input schema for MarketingExtractionTool."""
     target_region: str = Field(..., description="Target region/market")
@@ -195,40 +151,51 @@ Provide a structured prompt suitable for AI image generation."""
 
 class BrandingReportInput(BaseModel):
     """Input schema for BrandingReportTool."""
-    generated_image_paths: List[str] = Field(..., description="Paths to generated images")
+    generated_image_path: str = Field(..., description="Path to generated image")
+    logo_path: str = Field(..., description="Path to the logo file")
     branding_details: str = Field(..., description="Original branding details")
 
 
 class BrandingReportTool(BaseTool):
     name: str = "Branding Report Tool"
-    description: str = "Evaluates generated images against branding guidelines and provides feedback"
+    description: str = "Evaluates a single generated image against branding guidelines and verifies logo inclusion"
     args_schema: Type[BaseModel] = BrandingReportInput
 
-    def _run(self, generated_image_paths: List[str], branding_details: str) -> str:
-        """Evaluate images against branding."""
+    def _run(self, generated_image_path: str, logo_path: str, branding_details: str) -> str:
+        """Evaluate a single image against branding and verify logo inclusion."""
         try:
-            prompt = f"""As a branding expert with 25 years of experience, evaluate these generated campaign images against the branding guidelines:
+            prompt = f"""As a branding expert with 25 years of experience, evaluate this generated campaign image against the branding guidelines.
 
 Branding Guidelines:
 {branding_details}
 
-For each image, provide:
-1. Overall branding alignment score (0-10)
-2. What's working well
-3. What could be improved
-4. Specific recommendations for refinement
+IMPORTANT TASK: Compare the generated image with the provided logo reference to determine if the logo appears in the generated image.
 
-Provide a comprehensive branding report."""
+Provide:
+1. Overall branding alignment score (0-10)
+2. Logo Detection - Is the input logo visible in the generated image? (Answer YES or NO, then explain what you see)
+3. What's working well in terms of branding
+4. What could be improved
+5. Specific recommendations for refinement
+
+Provide a detailed branding report for this image."""
 
             # Build content parts
             contents = [prompt]
 
-            # Add images if available
-            for path in generated_image_paths:
-                if os.path.exists(path):
-                    with open(path, 'rb') as f:
-                        image_bytes = f.read()
-                    contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
+            # Add generated image
+            if os.path.exists(generated_image_path):
+                with open(generated_image_path, 'rb') as f:
+                    image_bytes = f.read()
+                contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
+                contents.append("This is the generated campaign image to evaluate.")
+
+            # Add logo reference
+            if os.path.exists(logo_path):
+                with open(logo_path, 'rb') as f:
+                    logo_bytes = f.read()
+                contents.append(types.Part.from_bytes(data=logo_bytes, mime_type='image/png'))
+                contents.append("This is the logo that should be present in the generated image.")
 
             if len(contents) == 1:
                 contents[0] += "\n\nNote: No images were provided for evaluation."

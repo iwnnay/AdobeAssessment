@@ -6,7 +6,6 @@ import os
 from crewai import Agent, LLM
 from src.flows.tools import (
     BrandingExtractionTool,
-    LogoExtractionTool,
     MarketingExtractionTool,
     ImageSummaryTool,
     BrandingReportTool,
@@ -24,21 +23,6 @@ def create_branding_extract_agent() -> Agent:
         goal="To evaluate a given image, target audience and campaign message to create a summary to be used in image generation that determines details about the logo, branding, and relevant product information. And to determine what should and what should not be included in the image.",
         backstory="You are a product branding expert with 25 years of experience in successful marketing campaigns.",
         tools=[BrandingExtractionTool()],
-        verbose=True,
-        allow_delegation=False,
-        llm=llm
-    )
-
-
-def create_logo_extract_agent() -> Agent:
-    """
-    Agent for extracting logo from uploaded images using Gemini Pro.
-    """
-    return Agent(
-        role="Logo extraction expert",
-        goal="To lift the logo from a given image using advanced image analysis.",
-        backstory="You are a visual analysis expert specializing in logo detection and extraction from complex images.",
-        tools=[LogoExtractionTool()],
         verbose=True,
         allow_delegation=False,
         llm=llm
