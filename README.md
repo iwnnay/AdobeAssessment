@@ -3,8 +3,10 @@ Creative Automation Pipeline (PoC)
 Overview
 This is a lightweight proof-of-concept that automates creative asset generation for social ad campaigns. It reads a campaign brief, reuses input assets when available, generates missing assets, overlays the campaign message, and exports creatives for multiple aspect ratios organized by product.
 
+Note on AI/agents: The intended backend is an agentic flow orchestrated with CrewAI using Google Gemini Pro for logo extraction and image generation. In this PoC, those calls are stubbed locally. The logo is not composited with Pillow; instead, its path would be provided to the image generation call.
+
 Key Features
-- Accepts a campaign brief (JSON or YAML) with: products (>=2), target region, audience, and campaign message.
+- Accepts a campaign brief (JSON only) with: products (>=2), target region, audience, and campaign message.
 - Reuses assets from a local assets directory if present (e.g., Coffee Pods.png).
 - Generates placeholder hero images when assets are missing (uses brand colors + gradient).
 - Produces creatives for multiple aspect ratios: 1:1, 9:16, 16:9.
@@ -31,8 +33,8 @@ Project Layout
 - campaigns/ — (Optional) Folder where additional campaign JSON files are stored/managed by the UI.
 - assets/ — Place optional input assets here (created automatically on first run if missing).
   - Example filenames it will look for per product: Coffee Pods.png, Coffee Pods.jpg, Coffee Pods.jpeg
-  - Optional logo file name: logo.png (or .jpg/.jpeg). If present, it will be overlaid automatically.
-- outputs/ — Generated creatives and report (created on run).
+  - Optional logo file name: logo.png (or .jpg/.jpeg). If present, its path is passed to the image generation step (e.g., Gemini Pro). It is not composited locally by Pillow.
+- images/ — Generated creatives organized by campaign and aspect ratio (created on run).
 
 Usage
 Basic run (uses campaign.json in project root):
@@ -90,7 +92,7 @@ Streamlit UI usage with Hugging Face
 5. The pipeline will try HF first (when no local product image exists); on failure it falls back to a branded placeholder.
 
 Arguments
-- --brief        Path to campaign brief (JSON or YAML). Default: campaign.json
+- --brief        Path to campaign brief (JSON). Default: campaign.json
 - --assets-dir   Input assets directory. Default: assets
 - --out-dir      Output directory. Default: outputs
 - --ratios       Comma-separated list of aspect ratios (supported: 1:1,9:16,16:9). Default: 1:1,9:16,16:9
@@ -103,25 +105,21 @@ Campaign Brief Format (JSON example)
   "campaign_message": "Fuel your day with bold flavor."
 }
 
-YAML is also supported if PyYAML is installed (it is included in requirements.txt on Python 3.8+).
+Note: YAML is not supported. Use JSON only for campaign briefs.
 
 Outputs
-On successful run, outputs/ will contain one folder per product, and inside that, one folder per aspect ratio (e.g., 1x1, 9x16, 16x9). A report.json file is also written at outputs/report.json summarizing generated files, brand checks, and legal flags.
+When using the Streamlit app provided in this repo, generated creatives are saved per campaign in the following structure: images/campaign{campaignId}/{ratio}.png, where ratio is one of 1x1, 9x16, 16x9. For example: images/campaign3/1x1.png. This matches the requested layout.
 
 Example Output Tree (abbreviated)
-outputs/
-  report.json
-  coffee_pods/
-    1x1/
-      coffee_pods_1x1.png
-    9x16/
-      coffee_pods_9x16.png
-    16x9/
-      coffee_pods_16x9.png
-  cold_brew_bottle/
-    1x1/
-      cold_brew_bottle_1x1.png
-    ...
+images/
+  campaign1/
+    1x1.png
+    9x16.png
+    16x9.png
+  campaign2/
+    1x1.png
+    9x16.png
+    16x9.png
 
 Design Decisions
 - Simplicity: A single Python script (main.py) provides a clear, minimal PoC without external services.
@@ -146,12 +144,11 @@ Demo Tips (for recording)
 
 Troubleshooting
 - If you see an error about PIL/Pillow not found, ensure you ran: pip install -r requirements.txt
-- If brief parsing fails and you’re using YAML, ensure PyYAML is installed (it is in requirements.txt) and the file is valid YAML.
  - If Streamlit isn’t found, install requirements (streamlit is included): pip install -r requirements.txt
- - If the browser doesn’t open automatically, copy the local URL shown in the terminal (e.g., http://localhost:8501) and paste it into your browser.
- - If you see “port already in use,” run with a different port, e.g.: streamlit run streamlit_app.py --server.port 8502
- - On first run, Windows may prompt for firewall permission; allow access so your browser can connect to the local app.
- - If Hugging Face generation fails: ensure your token is valid, the model id exists and is public/you have access, and try fewer steps. The app will automatically fall back to local placeholder generation so your run still completes.
+  - If the browser doesn’t open automatically, copy the local URL shown in the terminal (e.g., http://localhost:8501) and paste it into your browser.
+  - If you see “port already in use,” run with a different port, e.g.: streamlit run streamlit_app.py --server.port 8502
+  - On first run, Windows may prompt for firewall permission; allow access so your browser can connect to the local app.
+  - If Hugging Face generation fails: ensure your token is valid, the model id exists and is public/you have access, and try fewer steps. The app will automatically fall back to local placeholder generation so your run still completes.
 
 License
 This PoC is provided for interview/demo purposes.
