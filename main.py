@@ -2,7 +2,8 @@ import argparse
 import json
 import os
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
+from io import BytesIO
 
 try:
     import yaml  # type: ignore
@@ -11,6 +12,7 @@ except Exception:
     YAML_AVAILABLE = False
 
 from PIL import Image, ImageDraw, ImageFont
+import requests
 
 
 ASPECT_RATIOS: Dict[str, Tuple[int, int]] = {
@@ -47,7 +49,20 @@ def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def find_or_generate_base_asset(product: str, assets_dir: str, size: Tuple[int, int]) -> Image.Image:
+def find_or_generate_base_asset(
+    product: str,
+    assets_dir: str,
+    size: Tuple[int, int],
+    *,
+    use_hf: bool = False,
+    hf_model_id: Optional[str] = None,
+    hf_token: Optional[str] = None,
+    prompt_message: str = "",
+    hf_num_steps: int = 28,
+    hf_guidance: float = 7.5,
+    hf_negative_prompt: Optional[str] = None,
+    hf_seed: Optional[int] = None,
+) -> Image.Image:
     """Find existing product image under assets_dir or generate a placeholder hero image."""
     # Try common extensions
     for ext in (".png", ".jpg", ".jpeg"):
@@ -57,6 +72,27 @@ def find_or_generate_base_asset(product: str, assets_dir: str, size: Tuple[int, 
                 return Image.open(p).convert("RGBA").resize(size)
             except Exception:
                 pass
+
+    # If enabled, try Hugging Face text-to-image generation as base asset
+    if use_hf and hf_model_id and (hf_token or os.getenv("HUGGINGFACEHUB_API_TOKEN")):
+        try:
+            token = hf_token or os.getenv("HUGGINGFACEHUB_API_TOKEN") or ""
+            prompt = build_prompt(product, prompt_message)
+            img = hf_generate_image(
+                prompt=prompt,
+                size=size,
+                model_id=hf_model_id,
+                token=token,
+                num_inference_steps=hf_num_steps,
+                guidance_scale=hf_guidance,
+                negative_prompt=hf_negative_prompt,
+                seed=hf_seed,
+            )
+            if img:
+                return img.convert("RGBA").resize(size)
+        except Exception:
+            # Fall back to local generation on any failure
+            pass
 
     # Generate gradient background placeholder with product name
     w, h = size
@@ -186,7 +222,77 @@ def legal_checks(text: str) -> List[str]:
     return issues
 
 
-def generate_creatives(brief: Dict, assets_dir: str, out_dir: str, ratios: List[str]) -> Dict:
+def build_prompt(product: str, message: str) -> str:
+    base = (
+        f"Commercial product photo of {product}, hero shot, advertising, studio lighting, soft shadows, high detail, 8k, professional, brand-safe. "
+    )
+    if message:
+        base += f"Ad message: {message}. "
+    # Keep prompt concise to avoid API rejections
+    return base.strip()
+
+
+def hf_generate_image(
+    *,
+    prompt: str,
+    size: Tuple[int, int],
+    model_id: str,
+    token: str,
+    num_inference_steps: int = 28,
+    guidance_scale: float = 7.5,
+    negative_prompt: Optional[str] = None,
+    seed: Optional[int] = None,
+) -> Image.Image:
+    """Call Hugging Face Inference API to generate an image for the given prompt.
+
+    Returns a PIL Image. Raises on HTTP errors. The image is not guaranteed to be
+    exactly the requested size; we resize the result to fit our canvas.
+    """
+    url = f"https://api-inference.huggingface.co/models/{model_id}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "image/png",
+    }
+    payload: Dict = {
+        "inputs": prompt,
+        "parameters": {
+            "width": size[0],
+            "height": size[1],
+            "num_inference_steps": max(1, int(num_inference_steps)),
+            "guidance_scale": float(guidance_scale),
+        },
+        "options": {"wait_for_model": True},
+    }
+    if negative_prompt:
+        payload["parameters"]["negative_prompt"] = negative_prompt
+    if seed is not None:
+        payload["parameters"]["seed"] = int(seed)
+
+    resp = requests.post(url, headers=headers, json=payload, timeout=120)
+    resp.raise_for_status()
+    # API returns image bytes when Accept is image/png
+    content_type = resp.headers.get("content-type", "")
+    if "application/json" in content_type.lower():
+        # Error body
+        data = resp.json()
+        raise RuntimeError(f"HF generation failed: {data.get('error') or data}")
+    return Image.open(BytesIO(resp.content)).convert("RGBA")
+
+
+def generate_creatives(
+    brief: Dict,
+    assets_dir: str,
+    out_dir: str,
+    ratios: List[str],
+    *,
+    use_hf: bool = False,
+    hf_model_id: Optional[str] = None,
+    hf_token: Optional[str] = None,
+    hf_num_steps: int = 28,
+    hf_guidance: float = 7.5,
+    hf_negative_prompt: Optional[str] = None,
+    hf_seed: Optional[int] = None,
+) -> Dict:
     ensure_dir(out_dir)
     products: List[str] = brief.get("products") or []
     message: str = brief.get("campaign_message") or ""
@@ -214,7 +320,19 @@ def generate_creatives(brief: Dict, assets_dir: str, out_dir: str, ratios: List[
                 report["notes"].append(f"Unsupported ratio {r}; skipping.")
                 continue
             size = ASPECT_RATIOS[r]
-            base = find_or_generate_base_asset(product, assets_dir, size)
+            base = find_or_generate_base_asset(
+                product,
+                assets_dir,
+                size,
+                use_hf=use_hf,
+                hf_model_id=hf_model_id,
+                hf_token=hf_token,
+                prompt_message=message,
+                hf_num_steps=hf_num_steps,
+                hf_guidance=hf_guidance,
+                hf_negative_prompt=hf_negative_prompt,
+                hf_seed=hf_seed,
+            )
             with_logo, has_logo = overlay_logo(base, assets_dir)
             final_img = render_message(with_logo, message)
 
@@ -258,6 +376,14 @@ def parse_args():
         default="1:1,9:16,16:9",
         help="Comma-separated list of aspect ratios to generate (supported: 1:1,9:16,16:9)",
     )
+    # Hugging Face options
+    p.add_argument("--use-hf", action="store_true", help="Use Hugging Face Inference API to generate base images when local assets are missing")
+    p.add_argument("--hf-model-id", default="stabilityai/stable-diffusion-2-1", help="Hugging Face model id for text-to-image")
+    p.add_argument("--hf-token", default=None, help="Hugging Face API token (falls back to HUGGINGFACEHUB_API_TOKEN env var)")
+    p.add_argument("--hf-num-steps", type=int, default=28, help="Diffusion steps for HF generation")
+    p.add_argument("--hf-guidance", type=float, default=7.5, help="Guidance scale for HF generation")
+    p.add_argument("--hf-negative-prompt", default=None, help="Optional negative prompt for HF generation")
+    p.add_argument("--hf-seed", type=int, default=None, help="Optional random seed for HF generation")
     return p.parse_args()
 
 
@@ -265,7 +391,19 @@ def main():
     args = parse_args()
     brief = load_brief(args.brief)
     ratios = [r.strip() for r in args.ratios.split(",") if r.strip()]
-    report = generate_creatives(brief, args.assets_dir, args.out_dir, ratios)
+    report = generate_creatives(
+        brief,
+        args.assets_dir,
+        args.out_dir,
+        ratios,
+        use_hf=bool(args.use_hf),
+        hf_model_id=args.hf_model_id,
+        hf_token=(args.hf_token or os.getenv("HUGGINGFACEHUB_API_TOKEN")),
+        hf_num_steps=args.hf_num_steps,
+        hf_guidance=args.hf_guidance,
+        hf_negative_prompt=args.hf_negative_prompt,
+        hf_seed=args.hf_seed,
+    )
 
     # Simple console summary
     total = sum(len(v) for v in report["products"].values())

@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import streamlit as st
 
@@ -158,6 +158,35 @@ def main():
         with col4:
             out_dir = st.text_input("Output Directory", value=brief.get("out_dir", "outputs"))
 
+        st.markdown("---")
+        st.subheader("Hugging Face (optional)")
+        use_hf = st.checkbox(
+            "Use Hugging Face Inference API for base images (when local asset is missing)",
+            value=bool(brief.get("use_hf", False)),
+            help="If enabled, the pipeline will call a text-to-image model to generate a product hero image before overlaying your message.",
+        )
+        model_id = st.text_input(
+            "Model ID",
+            value=brief.get("hf_model_id", "stabilityai/stable-diffusion-2-1"),
+            help="Examples: stabilityai/stable-diffusion-2-1, stabilityai/sdxl-turbo, runwayml/stable-diffusion-v1-5",
+        )
+        colm1, colm2, colm3 = st.columns(3)
+        with colm1:
+            hf_steps = st.number_input("Steps", min_value=1, max_value=100, value=int(brief.get("hf_num_steps", 28)))
+        with colm2:
+            hf_guidance = st.number_input("Guidance", min_value=0.0, max_value=20.0, value=float(brief.get("hf_guidance", 7.5)), step=0.1)
+        with colm3:
+            hf_seed: Optional[int] = st.number_input("Seed (optional)", min_value=0, max_value=2**31-1, value=int(brief.get("hf_seed", 0)), step=1)
+            if hf_seed == 0:
+                hf_seed = None
+        neg_prompt = st.text_input("Negative prompt (optional)", value=brief.get("hf_negative_prompt", ""))
+        hf_token_input = st.text_input(
+            "Hugging Face API Token",
+            value=os.environ.get("HUGGINGFACEHUB_API_TOKEN", ""),
+            type="password",
+            help="Create a token at https://huggingface.co/settings/tokens. If empty, we'll try the HUGGINGFACEHUB_API_TOKEN env var.",
+        )
+
         save_clicked = st.form_submit_button("Save Campaign")
 
     # Persist changes if requested
@@ -170,6 +199,13 @@ def main():
         "ratios": ratios,
         "assets_dir": assets_dir,
         "out_dir": out_dir,
+        # Persist HF preferences except the secret token
+        "use_hf": use_hf,
+        "hf_model_id": model_id,
+        "hf_num_steps": int(hf_steps),
+        "hf_guidance": float(hf_guidance),
+        "hf_negative_prompt": (neg_prompt or None),
+        "hf_seed": hf_seed if hf_seed is not None else 0,
     }
     if save_clicked:
         write_campaign(selected_path, updated_brief)
@@ -199,6 +235,13 @@ def main():
                 assets_dir=assets_dir,
                 out_dir=out_dir,
                 ratios=ratios or list(ASPECT_RATIOS.keys()),
+                use_hf=use_hf,
+                hf_model_id=model_id,
+                hf_token=(hf_token_input or None),
+                hf_num_steps=int(hf_steps),
+                hf_guidance=float(hf_guidance),
+                hf_negative_prompt=(neg_prompt or None),
+                hf_seed=hf_seed,
             )
             st.session_state["last_report"] = report
             st.success("Generation complete.")

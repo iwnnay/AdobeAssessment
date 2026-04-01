@@ -59,6 +59,36 @@ What the UI provides:
 - Basic CRUD over campaigns: create new, duplicate, delete. Files are saved under campaigns/ (plus the default campaign.json in root).
 - Generate or regenerate creatives and preview the resulting images inline.
 
+Hugging Face image generation (optional)
+- You can use the Hugging Face Inference API to generate higher-quality base images when local assets are missing.
+- This is available both via CLI flags and in the Streamlit UI (toggle in the form).
+
+Setup a Hugging Face token
+1. Create a free account at https://huggingface.co (if you don't have one).
+2. Create an access token at https://huggingface.co/settings/tokens (read access is enough for public models).
+3. Set the token in your environment (recommended) so the app can pick it up:
+   - Windows PowerShell:
+     setx HUGGINGFACEHUB_API_TOKEN "<YOUR_TOKEN>"
+     (Then open a new terminal so the variable is available.)
+   - macOS/Linux (bash/zsh):
+     export HUGGINGFACEHUB_API_TOKEN="<YOUR_TOKEN>"
+
+CLI usage with Hugging Face
+- Example using Stable Diffusion 2.1 (falls back to local placeholder on any HF error):
+  python main.py --brief campaign.json --assets-dir assets --out-dir outputs --ratios "1:1,9:16,16:9" \
+    --use-hf --hf-model-id stabilityai/stable-diffusion-2-1 --hf-num-steps 30 --hf-guidance 7.5
+- You may also pass the token explicitly (env var preferred):
+  python main.py --use-hf --hf-token YOUR_TOKEN_HERE
+- Other useful flags:
+  --hf-negative-prompt "blurry, low quality" --hf-seed 123
+
+Streamlit UI usage with Hugging Face
+1. Launch the UI: streamlit run streamlit_app.py
+2. In the form, expand the "Hugging Face (optional)" section.
+3. Enable "Use Hugging Face Inference API" and choose a model (e.g., stabilityai/stable-diffusion-2-1 or stabilityai/sdxl-turbo).
+4. Enter your token (or rely on the HUGGINGFACEHUB_API_TOKEN env var), then click Generate Images.
+5. The pipeline will try HF first (when no local product image exists); on failure it falls back to a branded placeholder.
+
 Arguments
 - --brief        Path to campaign brief (JSON or YAML). Default: campaign.json
 - --assets-dir   Input assets directory. Default: assets
@@ -95,7 +125,7 @@ outputs/
 
 Design Decisions
 - Simplicity: A single Python script (main.py) provides a clear, minimal PoC without external services.
-- Placeholder generation: When assets are missing, Pillow generates gradient backgrounds with brand colors, ensuring consistent visual identity.
+- Placeholder generation: When assets are missing, the app can either call the Hugging Face Inference API to generate a product hero image (if enabled), or locally generate a gradient placeholder with brand colors.
 - Brand checks: Lightweight, focusing on detectable items locally (logo presence and brand palette usage assumed by generator).
 - Legal checks: String-based term flags for demo purposes only (not a substitute for legal review).
 - Extensibility: The find_or_generate_base_asset function can be extended to call an external GenAI image API when desired.
@@ -121,6 +151,7 @@ Troubleshooting
  - If the browser doesn’t open automatically, copy the local URL shown in the terminal (e.g., http://localhost:8501) and paste it into your browser.
  - If you see “port already in use,” run with a different port, e.g.: streamlit run streamlit_app.py --server.port 8502
  - On first run, Windows may prompt for firewall permission; allow access so your browser can connect to the local app.
+ - If Hugging Face generation fails: ensure your token is valid, the model id exists and is public/you have access, and try fewer steps. The app will automatically fall back to local placeholder generation so your run still completes.
 
 License
 This PoC is provided for interview/demo purposes.
