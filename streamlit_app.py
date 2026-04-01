@@ -79,7 +79,6 @@ def show_campaign(campaign: Campaign):
             campaign.approved = not campaign.approved
             db.update(campaign)
             st.experimental_rerun()
-        st.markdown(f"Status: :{color}[{label}]")
 
     # Images grid
     st.markdown("### Images")
@@ -113,9 +112,8 @@ def run_generation_flow(campaign: Campaign, uploaded_images: List[io.BytesIO]) -
     # save images
     saved = save_uploaded_images(campaign.id, uploaded_images)
     campaign.initialImages = saved
-    campaign = generator.extract_details(campaign, saved)
-    campaign = generator.generate_missing(campaign)
-    campaign = generator.evaluate_and_plan(campaign)
+    # Execute the complete CrewAI flow (all steps: extraction, generation, evaluation)
+    campaign = generator.process_campaign(campaign)
     db.update(campaign)
     return campaign
 
@@ -131,7 +129,7 @@ def sidebar_nav() -> Optional[int]:
         if st.sidebar.button(c.name, key=f"nav_{c.id}"):
             st.session_state["page"] = f"view:{c.id}"
     # Handle share link param
-    qp = st.experimental_get_query_params()
+    qp = st.query_params
     if "c" in qp:
         key = qp["c"][0]
         try:
@@ -143,7 +141,9 @@ def sidebar_nav() -> Optional[int]:
 
 
 def page_new_campaign():
+    new_id = db.next_id()
     st.markdown("## Generate Campaign")
+    st.text_input("Campaign Name", value=f"Campaign {new_id}")
 
     # Toggle between file upload and manual form
     use_upload = st.checkbox("Upload brief (JSON)?", value=True)
@@ -169,7 +169,6 @@ def page_new_campaign():
                 st.error(f"Failed to parse brief: {e}")
     else:
         with st.form("manual_form"):
-            name = st.text_input("Campaign Name", value="")
             products = st.text_input("Products (comma-separated)", value="")
             region = st.text_input("Target Region/Market", value="")
             audience = st.text_input("Target Audience", value="")

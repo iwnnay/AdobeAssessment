@@ -1,2 +1,7 @@
-.idea/
+.env
 __pycache__/
+lib/
+.DS_Store
+.idea/
+database.json
+storage/
