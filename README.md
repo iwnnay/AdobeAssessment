@@ -11,6 +11,8 @@ This application generates campaign ideas and images for social media marketing 
 
 ## Setup
 
+[![Watch the video](./setup.png)](https://youtu.be/ojfHK_pGCI0)
+
 ### Configure API Key
 Copy the example environment file and add your Gemini API key:
 
