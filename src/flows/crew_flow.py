@@ -10,7 +10,7 @@ from google.genai import types
 from PIL import Image as PILImage
 
 from src.database import Database
-from src.models import Campaign, ImageRecord
+from src.models import Campaign, ImageRecord, MarketingExtraction
 from src.flows.agents import (
     create_branding_extract_agent,
     create_marketing_extract_agent,
@@ -97,19 +97,26 @@ class CampaignGenerationFlow:
         # Execute extraction
         results = extraction_crew.kickoff()
 
-        # Store results in campaign
-        campaign.brandingDetails = str(results)
+        # Extract branding details (first task result)
+        campaign.brandingDetails = str(results.tasks_output[0])
 
-        # Parse marketing details to extract language
-        marketing_result = str(results)
-        if "language" in marketing_result.lower():
-            # Simple extraction - in production you'd parse more carefully
+        # Extract marketing details (second task result - Pydantic object)
+        marketing_result = results.tasks_output[1]
+
+        # Check if we got a MarketingExtraction object or just a string
+        if isinstance(marketing_result.pydantic, MarketingExtraction):
+            # Use the structured Pydantic output
+            campaign.language = marketing_result.pydantic.language
+            campaign.marketingDetails = marketing_result.pydantic.marketing_research
+        else:
+            # Fallback to string parsing if Pydantic didn't work
+            marketing_str = str(marketing_result)
+            campaign.marketingDetails = marketing_str
+            # Simple fallback language detection
             if "US" in campaign.target_region.upper() or "USA" in campaign.target_region.upper():
                 campaign.language = "US_en"
             else:
                 campaign.language = "EN"
-
-        campaign.marketingDetails = marketing_result
 
         return campaign
 

@@ -130,8 +130,7 @@ def sidebar_nav() -> Optional[int]:
             st.session_state["page"] = f"view:{cid}"
         except Exception:
             pass
-    if st.sidebar.button("Plot Chart"):
-        st.session_state["page"] = "plot"
+
     return None
 
 
@@ -153,8 +152,8 @@ def page_new_campaign():
                 data = uploaded_brief.read()
                 text = data.decode("utf-8")
                 brief = json.loads(text)
-                if "name" not in brief:
-                    brief["name"] = os.path.splitext(uploaded_brief.name)[0]
+                # Use the name from the text input field, not from the JSON or filename
+                brief["name"] = name.strip() if name.strip() else os.path.splitext(uploaded_brief.name)[0]
                 campaign = create_campaign_from_brief(brief)
             except Exception as e:
                 st.error(f"Failed to parse brief: {e}")
@@ -218,10 +217,6 @@ def page_view_campaign(cid: int):
         return
     show_campaign(campaign)
 
-def show_plot_page():
-    pass
-
-
 def main():
     sidebar_nav()
     page = st.session_state.get("page", "new")
@@ -231,11 +226,6 @@ def main():
         try:
             cid = int(page.split(":")[1])
             page_view_campaign(cid)
-        except Exception:
-            page_new_campaign()
-    elif page == "plot":
-        try:
-            show_plot_page()
         except Exception:
             page_new_campaign()
     else:

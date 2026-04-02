@@ -3,7 +3,7 @@ CrewAI Task Definitions for Campaign Generation Flow
 """
 from crewai import Task
 from typing import List
-from src.models import Campaign
+from src.models import Campaign, MarketingExtraction
 
 
 def create_branding_extraction_task(agent, campaign: Campaign) -> Task:
@@ -32,14 +32,19 @@ Target Region: {campaign.target_region}
 Target Audience: {campaign.target_audience}
 Campaign Message: {campaign.campaign_message}
 
-Research and provide:
-1. Language and cultural considerations
-2. Current trends relevant to the target audience
-3. Refined marketing message with professional guardrails
-4. Audience engagement strategies
-5. Performance optimization recommendations""",
-        expected_output="A comprehensive marketing analysis including language recommendations, cultural insights, trends, refined messaging, and engagement strategies.",
-        agent=agent
+Research and provide structured output with:
+1. language: The primary language code for {campaign.target_region} (format: 'COUNTRY_language' like 'US_en', 'ES_es', 'FR_fr', 'DE_de', 'JP_ja', etc.)
+2. marketing_research: Comprehensive analysis including:
+   - Cultural considerations for {campaign.target_region}
+   - Current trends relevant to {campaign.target_audience}
+   - Refined marketing message with professional guardrails
+   - Audience engagement strategies
+   - Performance optimization recommendations
+
+IMPORTANT: Determine the correct language code based on the target region.""",
+        expected_output="A MarketingExtraction object with language code and comprehensive marketing research.",
+        agent=agent,
+        output_pydantic=MarketingExtraction
     )
 
 

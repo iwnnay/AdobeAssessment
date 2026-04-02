@@ -3,6 +3,12 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, validator
 
 
+class MarketingExtraction(BaseModel):
+    """Structured output from marketing extraction task."""
+    language: str = Field(..., description="Primary language code (e.g., 'US_en', 'ES_es', 'FR_fr')")
+    marketing_research: str = Field(..., description="Comprehensive marketing research and insights")
+
+
 class ImageRecord(BaseModel):
     aspectRatio: str
     path: str
