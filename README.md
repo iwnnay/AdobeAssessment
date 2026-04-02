@@ -52,7 +52,7 @@ uv pip install -r requirements.txt
 Run the Streamlit application:
 
 ```bash
-streamlit run streamlit_app.py
+uv run streamlit run streamlit_app.py
 ```
 
 The application will open in your browser at [http://localhost:8501](http://localhost:8501)
