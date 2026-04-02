@@ -18,7 +18,7 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 class BrandingExtractionInput(BaseModel):
     """Input schema for BrandingExtractionTool."""
-    image_paths: List[str] = Field(..., description="List of image file paths to analyze")
+    logo_path: str = Field(..., description="campaign logo path")
     target_audience: str = Field(..., description="Target audience for the campaign")
     campaign_message: str = Field(..., description="Campaign message")
     products: List[str] = Field(..., description="List of products in the campaign")
@@ -29,7 +29,7 @@ class BrandingExtractionTool(BaseTool):
     description: str = "Analyzes images and campaign details to extract branding guidelines for image generation"
     args_schema: Type[BaseModel] = BrandingExtractionInput
 
-    def _run(self, image_paths: List[str], target_audience: str, campaign_message: str, products: List[str]) -> str:
+    def _run(self, logo_path: str, target_audience: str, campaign_message: str, products: List[str]) -> str:
         """Extract branding details using Gemini Pro Vision."""
         try:
             prompt = f"""Analyze these images for a marketing campaign with the following details:
@@ -47,17 +47,11 @@ As a branding expert with 25 years of experience, provide:
 Format your response as a structured branding guide suitable for image generation."""
 
             # Build content parts
-            contents = [prompt]
-
-            # Add images if available
-            for path in image_paths[:3]:  # Limit to first 3 images
-                if os.path.exists(path):
-                    with open(path, 'rb') as f:
-                        image_bytes = f.read()
-                    contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
+            logo = PILImage.open(logo_path)
+            contents = [prompt, logo]
 
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL_NAME"),
+                model="gemini-3.1-pro-preview",
                 contents=contents
             )
 
@@ -185,23 +179,19 @@ Provide a detailed branding report for this image."""
 
             # Add generated image
             if os.path.exists(generated_image_path):
-                with open(generated_image_path, 'rb') as f:
-                    image_bytes = f.read()
-                contents.append(types.Part.from_bytes(data=image_bytes, mime_type='image/png'))
+                contents.append(PILImage.open(generated_image_path))
                 contents.append("This is the generated campaign image to evaluate.")
 
             # Add logo reference
             if os.path.exists(logo_path):
-                with open(logo_path, 'rb') as f:
-                    logo_bytes = f.read()
-                contents.append(types.Part.from_bytes(data=logo_bytes, mime_type='image/png'))
+                contents.append(PILImage.open(logo_path))
                 contents.append("This is the logo that should be present in the generated image.")
 
             if len(contents) == 1:
                 contents[0] += "\n\nNote: No images were provided for evaluation."
 
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL_NAME"),
+                model="gemini-3.1-pro-preview",
                 contents=contents
             )
 

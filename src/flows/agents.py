@@ -13,6 +13,8 @@ from src.flows.tools import (
 )
 
 llm = LLM(model=os.getenv("GEMINI_MODEL_NAME"))
+imageReaderLlm = LLM(model="gemini/gemini-3.1-pro-preview")
+
 
 def create_branding_extract_agent() -> Agent:
     """
@@ -25,7 +27,7 @@ def create_branding_extract_agent() -> Agent:
         tools=[BrandingExtractionTool()],
         verbose=True,
         allow_delegation=False,
-        llm=llm
+        llm=imageReaderLlm
     )
 
 
@@ -70,7 +72,7 @@ def create_branding_report_agent() -> Agent:
         tools=[BrandingReportTool()],
         verbose=True,
         allow_delegation=False,
-        llm=llm
+        llm=imageReaderLlm
     )
 
 

@@ -103,7 +103,7 @@ def show_campaign(campaign: Campaign):
         st.markdown(campaign.futureCampaigns or "No plans yet.")
 
     with st.expander("Marketing Details"):
-        st.markdown(campaign.marketingDetails or "-")
+        st.markdown(campaign.marketingDetails or "No details yet.")
 
 
 def run_generation_flow(campaign: Campaign) -> Campaign:
