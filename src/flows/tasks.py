@@ -66,6 +66,12 @@ Synthesize all information into a comprehensive prompt that will guide AI image 
         agent=agent
     )
 
+def create_translation_task(agent, campaign: Campaign) -> Task:
+    """Task for translating campaign message into target language."""
+    return Task(
+        description=f"""Translate the campaign message from English to {campaign.target_language}."""
+    )
+
 
 def create_branding_report_task(agent, generated_image_path: str, logo_path: str,
                                  branding_details: str) -> Task:

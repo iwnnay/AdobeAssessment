@@ -183,6 +183,7 @@ def page_new_campaign():
                     for k, v in error_msgs.items():
                         st.warning(f"{k}: {v}")
                 else:
+                    submitted = None
                     campaign = create_campaign_from_form(name, products, region, audience, message)
 
     # Separate generate button when using upload path
