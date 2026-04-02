@@ -10,7 +10,7 @@ from google.genai import types
 from PIL import Image as PILImage
 
 from src.database import Database
-from src.models import Campaign, ImageRecord, MarketingExtraction
+from src.models import Campaign, ImageRecord, MarketingExtraction, ImageSummary
 from src.flows.agents import (
     create_branding_extract_agent,
     create_marketing_extract_agent,
@@ -136,13 +136,14 @@ class CampaignGenerationFlow:
         for ratio in to_make:
             print(f"Generating image for aspect ratio: {ratio}")
 
-            # Create image summary task
+            # Create image summary task with language for translation
             summary_task = create_image_summary_task(
                 image_summary_agent,
                 campaign.brandingDetails,
                 campaign.marketingDetails,
                 campaign.campaign_message,
-                ratio
+                ratio,
+                campaign.language
             )
 
             # Execute summary creation
@@ -155,14 +156,24 @@ class CampaignGenerationFlow:
             )
 
             summary_result = summary_crew.kickoff()
-            generation_prompt = str(summary_result)
 
-            # Generate image using Gemini Pro
+            # Extract structured output from the task result
+            if isinstance(summary_result.pydantic, ImageSummary):
+                generation_prompt = summary_result.pydantic.generation_prompt
+                translated_message = summary_result.pydantic.translated_message
+            else:
+                # Fallback if Pydantic didn't work
+                generation_prompt = str(summary_result)
+                translated_message = campaign.campaign_message
+
+            print(f"Translated message ({campaign.language}): {translated_message}")
+
+            # Generate image using Gemini Pro with translated message
             generated_image = self._generate_image_with_gemini(
                 prompt=generation_prompt,
                 aspect_ratio=ratio,
                 logo_path=campaign.logo_path,
-                campaign_message=campaign.campaign_message
+                campaign_message=translated_message
             )
 
             # Save generated image

@@ -3,7 +3,7 @@ CrewAI Task Definitions for Campaign Generation Flow
 """
 from crewai import Task
 from typing import List
-from src.models import Campaign, MarketingExtraction
+from src.models import Campaign, MarketingExtraction, ImageSummary
 
 
 def create_branding_extraction_task(agent, campaign: Campaign) -> Task:
@@ -49,27 +49,27 @@ IMPORTANT: Determine the correct language code based on the target region.""",
 
 
 def create_image_summary_task(agent, branding_details: str, marketing_details: str,
-                               campaign_message: str, aspect_ratio: str) -> Task:
-    """Task for creating image generation prompt from branding and marketing details."""
+                               campaign_message: str, aspect_ratio: str, target_language: str) -> Task:
+    """Task for creating image generation prompt and translating campaign message."""
     return Task(
-        description=f"""Create a detailed image generation prompt optimized for {aspect_ratio} aspect ratio.
+        description=f"""Create a detailed image generation prompt optimized for {aspect_ratio} aspect ratio AND translate the campaign message.
 
-Campaign Message: {campaign_message}
+Campaign Message (English): {campaign_message}
+Target Language: {target_language}
 Aspect Ratio: {aspect_ratio}
 
 Use the following context:
 Branding Details: {branding_details[:500]}...
 Marketing Details: {marketing_details[:500]}...
 
-Synthesize all information into a comprehensive prompt that will guide AI image generation while maintaining brand consistency and marketing effectiveness.""",
-        expected_output=f"A detailed, structured image generation prompt optimized for {aspect_ratio} format that incorporates branding and marketing guidelines.",
-        agent=agent
-    )
+Provide structured output with:
+1. generation_prompt: A comprehensive prompt that will guide AI image generation while maintaining brand consistency and marketing effectiveness
+2. translated_message: The campaign message translated to {target_language} (if already in target language, return as-is)
 
-def create_translation_task(agent, campaign: Campaign) -> Task:
-    """Task for translating campaign message into target language."""
-    return Task(
-        description=f"""Translate the campaign message from English to {campaign.target_language}."""
+IMPORTANT: Ensure the translated_message is natural and culturally appropriate for {target_language}.""",
+        expected_output=f"An ImageSummary object with generation_prompt and translated_message in {target_language}.",
+        agent=agent,
+        output_pydantic=ImageSummary
     )
 
 

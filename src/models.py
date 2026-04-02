@@ -8,10 +8,10 @@ class MarketingExtraction(BaseModel):
     language: str = Field(..., description="Primary language code (e.g., 'US_en', 'ES_es', 'FR_fr')")
     marketing_research: str = Field(..., description="Comprehensive marketing research and insights")
 
-class ImageGenPrompt(BaseModel):
-    """Structured output from marketing extraction task."""
-    message: str = Field(..., description="The message translated to the target language")
-    marketing_research: str = Field(..., description="Prompt designed to generate a high-quality image inline with the branding and marketing guidelines")
+class ImageSummary(BaseModel):
+    """Structured output from image summary generation task."""
+    generation_prompt: str = Field(..., description="Detailed image generation prompt with branding and marketing context")
+    translated_message: str = Field(..., description="Campaign message translated to the target language")
 
 
 class ImageRecord(BaseModel):
