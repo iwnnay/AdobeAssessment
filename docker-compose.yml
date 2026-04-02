@@ -10,6 +10,5 @@ services:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
     volumes:
-      - ./database.json:/app/database.json
-      - ./storage:/app/storage
+      - ./:/app
     restart: unless-stopped
