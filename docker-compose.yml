@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   app:
     build: .
@@ -12,9 +10,6 @@ services:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
     volumes:
-      # Persist database and generated assets to your host for convenience
       - ./database.json:/app/database.json
       - ./storage:/app/storage
-      # Optional: mount campaigns folder if you add one later
-      # - ./campaigns:/app/campaigns
     restart: unless-stopped

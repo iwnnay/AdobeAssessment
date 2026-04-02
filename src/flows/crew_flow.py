@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 # Configure Gemini client with new API
-llm = LLM(model=os.getenv("GEMINI_MODEL_NAME"))
+llm = LLM(model=f"gemini/{os.getenv("GEMINI_CHAT_MODEL_NAME")}")
 
 
 class CampaignGenerationFlow:

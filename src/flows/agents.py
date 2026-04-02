@@ -12,8 +12,8 @@ from src.flows.tools import (
     FutureCampaignsTool
 )
 
-llm = LLM(model=os.getenv("GEMINI_MODEL_NAME"))
-imageReaderLlm = LLM(model="gemini/gemini-3.1-pro-preview")
+llm = LLM(model=f"gemini/{os.getenv("GEMINI_CHAT_MODEL_NAME")}")
+imageReaderLlm = LLM(model=f"gemini/{os.getenv('GEMINI_IMAGE_EVAL_MODEL_NAME')}")
 
 
 def create_branding_extract_agent() -> Agent:

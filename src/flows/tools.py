@@ -51,7 +51,7 @@ Format your response as a structured branding guide suitable for image generatio
             contents = [prompt, logo]
 
             response = client.models.generate_content(
-                model="gemini-3.1-pro-preview",
+                model=os.getenv("GEMINI_IMAGE_EVAL_MODEL_NAME"),
                 contents=contents
             )
 
@@ -90,7 +90,7 @@ Provide:
 Focus on creating compelling, culturally-appropriate content that drives engagement."""
 
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL_NAME"),
+                model=os.getenv("GEMINI_CHAT_MODEL_NAME"),
                 contents=prompt
             )
             return response.text
@@ -135,7 +135,7 @@ Create a comprehensive image generation prompt that:
 Provide a structured prompt suitable for AI image generation."""
 
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL_NAME"),
+                model=os.getenv("GEMINI_CHAT_MODEL_NAME"),
                 contents=prompt
             )
             return response.text
@@ -191,7 +191,7 @@ Provide a detailed branding report for this image."""
                 contents[0] += "\n\nNote: No images were provided for evaluation."
 
             response = client.models.generate_content(
-                model="gemini-3.1-pro-preview",
+                model=os.getenv("GEMINI_IMAGE_EVAL_MODEL_NAME"),
                 contents=contents
             )
 
@@ -239,7 +239,7 @@ For each of the next 3 months, provide:
 Focus on long-term strategy and sustained audience engagement."""
 
             response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL_NAME"),
+                model=os.getenv("GEMINI_CHAT_MODEL_NAME"),
                 contents=prompt
             )
             return response.text
