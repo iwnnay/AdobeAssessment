@@ -6,7 +6,7 @@ from typing import List
 from src.models import Campaign
 
 
-def create_branding_extraction_task(agent, campaign: Campaign, logo_path: str) -> Task:
+def create_branding_extraction_task(agent, campaign: Campaign) -> Task:
     """Task for extracting branding details from logo and campaign brief."""
     return Task(
         description=f"""Analyze the provided logo and campaign details to extract comprehensive branding guidelines.
@@ -15,7 +15,7 @@ Campaign Details:
 - Products: {', '.join(campaign.products)}
 - Target Audience: {campaign.target_audience}
 - Campaign Message: {campaign.campaign_message}
-- Logo path: {logo_path}
+- Logo path: {campaign.logo_path}
 
 Extract detailed branding information including logo characteristics, color palette, typography, visual tone, and brand elements to include or avoid in generated images.""",
         expected_output="A structured branding guide with logo details, color palette, typography, visual tone, and specific guidelines for image generation.",

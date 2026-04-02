@@ -18,10 +18,11 @@ class Campaign(BaseModel):
     campaign_message: str
     language: str = "US_en"
     approved: bool = False
-    generatedImages: List[ImageRecord] = Field(default_factory=list)
+    generated_images: List[ImageRecord] = Field(default_factory=list)
     brandingDetails: str = ""
     marketingDetails: str = ""
     futureCampaigns: str = ""
+    logo_path: str = "inputs/logo.png"
 
     @validator("products")
     def products_must_have_two(cls, v):

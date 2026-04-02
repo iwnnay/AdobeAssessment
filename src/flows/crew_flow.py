@@ -3,6 +3,7 @@ CrewAI Flow for Campaign Image Generation
 Orchestrates the 4-step process as defined in the requirements
 """
 import os
+import random
 from typing import List
 from crewai import Crew, Process, LLM
 from google.genai import types
@@ -12,7 +13,6 @@ from src.database import Database
 from src.models import Campaign, ImageRecord
 from src.flows.agents import (
     create_branding_extract_agent,
-    create_logo_extract_agent,
     create_marketing_extract_agent,
     create_image_summary_agent,
     create_branding_report_agent,
@@ -20,7 +20,6 @@ from src.flows.agents import (
 )
 from src.flows.tasks import (
     create_branding_extraction_task,
-    create_logo_extraction_task,
     create_marketing_extraction_task,
     create_image_summary_task,
     create_branding_report_task,
@@ -37,27 +36,23 @@ llm = LLM(model=os.getenv("GEMINI_MODEL_NAME"))
 class CampaignGenerationFlow:
     """Orchestrates the complete campaign generation workflow using CrewAI."""
 
-    def __init__(self, storage_root: str = "storage", outputs_root: str = "images"):
+    def __init__(self, storage_root: str = "storage"):
         self.storage_root = storage_root
-        self.outputs_root = outputs_root
 
     def execute(self, campaign: Campaign) -> Campaign:
         """
         Execute the full 4-step campaign generation flow.
 
-        Step 1: Extract branding, marketing details, and logo
+        Step 1: Extract branding, marketing details
         Step 2: Generate missing campaign images using Gemini Pro
         Step 3: Evaluate branding and generate future campaigns
         Step 4: Return completed campaign
         """
         print(f"\n=== Starting Campaign Generation Flow for: {campaign.name} ===\n")
 
-        # Get paths for initial images
-        initial_image_paths = [img.path for img in campaign.initialImages]
-
         # ===== STEP 1: Extraction Phase =====
-        print("Step 1: Extracting branding, marketing, and logo details...")
-        campaign = self._step1_extraction(campaign, initial_image_paths)
+        print("Step 1: Extracting branding, and marketing details...")
+        campaign = self._step1_extraction(campaign)
 
         # ===== STEP 2: Image Generation Phase =====
         print("\nStep 2: Generating missing campaign images...")
@@ -71,29 +66,17 @@ class CampaignGenerationFlow:
         print("\nStep 4: Campaign generation complete!")
         return campaign
 
-    def _step1_extraction(self, campaign: Campaign, initial_image_paths: List[str]) -> Campaign:
+    def _step1_extraction(self, campaign: Campaign) -> Campaign:
         """Step 1: Extract branding details, marketing details, and logo."""
 
         # Create agents for extraction
         branding_agent = create_branding_extract_agent()
-        logo_agent = create_logo_extract_agent()
         marketing_agent = create_marketing_extract_agent()
 
         # Task 1a: Extract branding details
         branding_task = create_branding_extraction_task(
-            branding_agent, campaign, initial_image_paths
+            branding_agent, campaign,
         )
-
-        # Task 1b: Extract logo
-        logo_dir = os.path.join(self.storage_root, f"campaign_{campaign.id}", "logo")
-        ensure_dir(logo_dir)
-        logo_output_path = os.path.join(logo_dir, "logo.png")
-
-        logo_task = None
-        if initial_image_paths:
-            logo_task = create_logo_extraction_task(
-                logo_agent, initial_image_paths[0], logo_output_path
-            )
 
         # Task 1c: Extract marketing details
         marketing_task = create_marketing_extraction_task(
@@ -102,11 +85,9 @@ class CampaignGenerationFlow:
 
         # Create crew for parallel extraction
         extraction_tasks = [branding_task, marketing_task]
-        if logo_task:
-            extraction_tasks.append(logo_task)
 
         extraction_crew = Crew(
-            agents=[branding_agent, marketing_agent, logo_agent] if logo_task else [branding_agent, marketing_agent],
+            agents=[branding_agent, marketing_agent],
             tasks=extraction_tasks,
             process=Process.sequential,
             verbose=True,
@@ -130,30 +111,19 @@ class CampaignGenerationFlow:
 
         campaign.marketingDetails = marketing_result
 
-        # Set logo if extracted
-        if logo_task and os.path.exists(logo_output_path):
-            campaign.logoImage = ImageRecord(
-                aspectRatio="square",
-                path=os.path.relpath(logo_output_path)
-            )
-
         return campaign
 
     def _step2_image_generation(self, campaign: Campaign) -> Campaign:
         """Step 2: Generate missing campaign images using Gemini Pro."""
 
         # Determine which aspect ratios need to be generated
-        to_make = required_ratios(campaign.initialImages)
-
-        if not to_make:
-            print("All required aspect ratios already provided. Skipping generation.")
-            return campaign
+        to_make = required_ratios()
 
         # Create image summary agent
         image_summary_agent = create_image_summary_agent()
 
         # Generate images for each missing ratio
-        out_dir = os.path.join(self.outputs_root, f"campaign{campaign.id}")
+        out_dir = os.path.join(self.storage_root, f"campaign{campaign.id}")
         ensure_dir(out_dir)
 
         for ratio in to_make:
@@ -184,7 +154,7 @@ class CampaignGenerationFlow:
             generated_image = self._generate_image_with_gemini(
                 prompt=generation_prompt,
                 aspect_ratio=ratio,
-                logo_path=campaign.logoImage.path if campaign.logoImage else None,
+                logo_path=campaign.logo_path,
                 campaign_message=campaign.campaign_message
             )
 
@@ -194,7 +164,7 @@ class CampaignGenerationFlow:
             generated_image.save(out_path)
 
             # Add to campaign
-            campaign.generatedImages.append(
+            campaign.generated_images.append(
                 ImageRecord(aspectRatio=ratio, path=os.path.relpath(out_path))
             )
 
@@ -202,49 +172,55 @@ class CampaignGenerationFlow:
 
     def _generate_image_with_gemini(self, prompt: str, aspect_ratio: str,
                                      logo_path: str = None, campaign_message: str = None) -> PILImage.Image:
-        """Generate image using Gemini Pro with logo and campaign message."""
+        """Generate image using Gemini 2.0 Flash with multimodal generation."""
         try:
+            from google import genai
+            import io
+
+            # Initialize client
+            client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
             # Build generation prompt
-            full_prompt = f"""Generate a high-quality marketing campaign image with the following specifications:
+            full_prompt = f"""Generate a professional marketing campaign image with these specifications:
 
 {prompt}
 
-Campaign Message to Display: {campaign_message}
+Campaign Message to display: "{campaign_message}"
 
 Requirements:
 - Aspect Ratio: {aspect_ratio}
-- Include the campaign message prominently
-- Maintain professional quality suitable for social media advertising
+- Include the campaign message text prominently and clearly in the design
+- High quality, professional marketing aesthetic suitable for social media
+- Modern, eye-catching, visually appealing design
 """
 
-            # Build content parts
-            contents = [full_prompt]
-
-            # Add logo if available
             if logo_path and os.path.exists(logo_path):
-                with open(logo_path, 'rb') as f:
-                    logo_bytes = f.read()
-                contents.append(types.Part.from_bytes(data=logo_bytes, mime_type='image/png'))
-                contents.append("Incorporate this logo into the image design.")
+                logo_image = PILImage.open(logo_path)
+                full_prompt += "\n\n naturally incorporate the logo image into the design"
+            else:
+                raise Exception("No logo image provided")
 
-            # Note: Gemini Pro primarily does image analysis, not generation
-            # For actual image generation, you would use Imagen API or another generative model
-            # This is a placeholder that creates a simple image with the prompt info
+            contents = [full_prompt, logo_image]
 
-            # Determine size based on aspect ratio
-            if aspect_ratio == "1:1":
-                size = (1024, 1024)
-            elif aspect_ratio == "9:16":
-                size = (1080, 1920)
-            else:  # 16:9
-                size = (1920, 1080)
+            print(f"Generating image with Gemini 2.0 Flash for {aspect_ratio} with {full_prompt}...\n\n{os.getenv('GEMINI_MODEL_NAME')}")
 
-            # Create placeholder image (in production, replace with actual Imagen API call)
-            from src.utils import generate_placeholder
-            return generate_placeholder(*size, text=campaign_message[:80])
+            # Generate image using Gemini 2.0 Flash multimodal generation
+            response = client.models.generate_content(
+                model=os.getenv("GEMINI_IMAGE_MODEL_NAME"),
+                contents=contents,
+            )
+
+            for part in response.parts:
+                if part.text:
+                    print(part.text)
+                elif part.inline_data:
+                    image = part.as_image()
+                    return image
+
+            raise Exception(f"No image generated {response}")
 
         except Exception as e:
-            print(f"Error generating image: {e}")
+            print(f"Falling back to placeholder image... {e}")
             # Fallback to placeholder
             if aspect_ratio == "1:1":
                 size = (1024, 1024)
@@ -253,24 +229,39 @@ Requirements:
             else:
                 size = (1920, 1080)
             from src.utils import generate_placeholder
-            return generate_placeholder(*size, text=campaign_message[:80])
+            return generate_placeholder(*size, text=f"Failed to generate: {campaign_message[:60]}")
 
     def _step3_evaluation(self, campaign: Campaign) -> Campaign:
-        """Step 3: Evaluate branding and generate future campaigns."""
+        """Step 3: Evaluate each image's branding and generate future campaigns."""
 
         # Create evaluation agents
         branding_report_agent = create_branding_report_agent()
         future_campaigns_agent = create_future_campaigns_agent()
 
-        # Get paths of generated images
-        generated_image_paths = [img.path for img in campaign.generatedImages]
+        # Task 3a: Evaluate each generated image individually
+        for i, image_record in enumerate(campaign.generated_images):
+            print(f"Evaluating image {i+1}/{len(campaign.generated_images)}: {image_record.path}")
 
-        # Task 3a: Branding report
-        branding_report_task = create_branding_report_task(
-            branding_report_agent,
-            generated_image_paths,
-            campaign.brandingDetails
-        )
+            branding_report_task = create_branding_report_task(
+                branding_report_agent,
+                image_record.path,
+                campaign.logo_path,
+                campaign.brandingDetails
+            )
+
+            # Create crew for this image's evaluation
+            image_evaluation_crew = Crew(
+                agents=[branding_report_agent],
+                tasks=[branding_report_task],
+                process=Process.sequential,
+                verbose=True
+            )
+
+            # Execute evaluation for this image
+            branding_result = image_evaluation_crew.kickoff()
+
+            # Store branding report in the image record
+            image_record.brandingReport = str(branding_result)
 
         # Task 3b: Future campaigns
         campaign_brief = {
@@ -288,23 +279,18 @@ Requirements:
             campaign.marketingDetails
         )
 
-        # Create crew for evaluation
-        evaluation_crew = Crew(
-            agents=[branding_report_agent, future_campaigns_agent],
-            tasks=[branding_report_task, future_campaigns_task],
+        # Create crew for future campaigns
+        future_campaigns_crew = Crew(
+            agents=[future_campaigns_agent],
+            tasks=[future_campaigns_task],
             process=Process.sequential,
-            verbose=True,
-            llm=llm,
+            verbose=True
         )
 
-        # Execute evaluation
-        results = evaluation_crew.kickoff()
+        # Execute future campaigns generation
+        future_result = future_campaigns_crew.kickoff()
 
-        # Store results
-        results_str = str(results)
-
-        # Split results (first part is branding report, second is future campaigns)
-        campaign.brandingReport = results_str
-        campaign.futureCampaigns = results_str
+        # Store future campaigns result
+        campaign.futureCampaigns = str(future_result)
 
         return campaign

@@ -15,7 +15,7 @@ import streamlit as st
 
 from src.models import Campaign
 from src.database import Database
-from src.utils import slugify, save_uploaded_images
+from src.utils import slugify
 from src.generator import ImageGenerator
 
 
@@ -82,7 +82,7 @@ def show_campaign(campaign: Campaign):
 
     # Images grid
     st.markdown("### Images")
-    imgs = campaign.generatedImages + campaign.initialImages
+    imgs = campaign.generated_images
     if imgs:
         cols = st.columns(3)
         for i, rec in enumerate(sorted(imgs, key=lambda r: r.aspectRatio)):
@@ -106,16 +106,8 @@ def show_campaign(campaign: Campaign):
         st.write(campaign.marketingDetails or "-")
 
 
-def run_generation_flow(campaign: Campaign, uploaded_images: List[io.BytesIO]) -> Campaign:
-    # persist initial record first
-    db.add(campaign)
-    # save images
-    saved = save_uploaded_images(campaign.id, uploaded_images)
-    campaign.initialImages = saved
-    # Execute the complete CrewAI flow (all steps: extraction, generation, evaluation)
-    db.update(campaign)
-    campaign = generator.process_campaign(campaign, db)
-    db.update(campaign)
+def run_generation_flow(campaign: Campaign) -> Campaign:
+    campaign = generator.process_campaign(campaign)
     return campaign
 
 
@@ -150,10 +142,6 @@ def page_new_campaign():
 
     # Toggle between file upload and manual form
     use_upload = st.checkbox("Upload brief (JSON)?", value=True)
-
-    uploaded_images = st.file_uploader(
-        "Upload images (optional)", type=["png", "jpg", "jpeg"], accept_multiple_files=True
-    )
 
     error_msgs = {}
     campaign: Optional[Campaign] = None
@@ -204,21 +192,23 @@ def page_new_campaign():
             if campaign is None:
                 st.warning("Please provide a valid brief file first.")
             else:
+                db.add(campaign)
                 with st.spinner("Generating..."):
-                    files = [io.BytesIO(f.read()) for f in uploaded_images] if uploaded_images else []
-                    campaign = run_generation_flow(campaign, files)
+                    campaign = run_generation_flow(campaign)
+                    db.update(campaign)
                 st.success("Campaign generated!")
                 st.session_state["page"] = f"view:{campaign.id}"
-                st.experimental_rerun()
+                st.rerun()
     else:
         # Manual form handles its own submit
         if campaign is not None and not error_msgs:
+            db.add(campaign)
             with st.spinner("Generating..."):
-                files = [io.BytesIO(f.read()) for f in uploaded_images] if uploaded_images else []
-                campaign = run_generation_flow(campaign, files)
+                campaign = run_generation_flow(campaign)
+                db.update(campaign)
             st.success("Campaign generated!")
             st.session_state["page"] = f"view:{campaign.id}"
-            st.experimental_rerun()
+            st.rerun()
 
 
 def page_view_campaign(cid: int):

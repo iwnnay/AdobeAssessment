@@ -14,7 +14,6 @@ services:
     volumes:
       # Persist database and generated assets to your host for convenience
       - ./database.json:/app/database.json
-      - ./images:/app/images
       - ./storage:/app/storage
       # Optional: mount campaigns folder if you add one later
       # - ./campaigns:/app/campaigns

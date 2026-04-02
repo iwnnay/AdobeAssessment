@@ -12,16 +12,12 @@ class ImageGenerator:
     Wrapper class for the CrewAI-powered campaign generation flow.
     Maintains API compatibility with the original implementation.
     """
-    def __init__(self, storage_root: str = "storage", outputs_root: str = "images"):
-        self.storage_root = storage_root
-        self.outputs_root = outputs_root
-        self.flow = CampaignGenerationFlow(storage_root, outputs_root)
-        self.db = None
+    def __init__(self):
+        self.flow = CampaignGenerationFlow("storage")
 
-    def process_campaign(self, campaign: Campaign, db: Database) -> Campaign:
+    def process_campaign(self, campaign: Campaign) -> Campaign:
         """
         Main entry point: Execute the complete CrewAI flow.
         This replaces the need to call extract_details, generate_missing, and evaluate_and_plan separately.
         """
-        self.db = db
-        return self.flow.execute(campaign, db)
+        return self.flow.execute(campaign)
