@@ -89,21 +89,21 @@ def show_campaign(campaign: Campaign):
             with cols[i % 3]:
                 try:
                     st.image(os.path.abspath(rec.path), caption=f"{rec.aspectRatio}")
+                    with st.expander("Branding Report"):
+                        st.markdown(rec.brandingReport or "No report yet.")
                 except Exception:
                     st.write(rec.path)
     else:
         st.info("No images yet.")
 
-    st.markdown("### Branding Report")
-    st.write(campaign.brandingReport or "No report yet.")
+    with st.expander("Branding Report"):
+        st.markdown(campaign.brandingDetails or "No Report Yet.")
 
-    st.markdown("### Future Campaigns")
-    st.write(campaign.futureCampaigns or "No plans yet.")
+    with st.expander("Future Campaigns"):
+        st.markdown(campaign.futureCampaigns or "No plans yet.")
 
-    with st.expander("Branding Details"):
-        st.write(campaign.brandingDetails or "-")
     with st.expander("Marketing Details"):
-        st.write(campaign.marketingDetails or "-")
+        st.markdown(campaign.marketingDetails or "-")
 
 
 def run_generation_flow(campaign: Campaign) -> Campaign:
